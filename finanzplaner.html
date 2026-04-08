@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Liquiditätsplaner Ramin</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<style>
+:root {
+  --blue-900: #1e3a5f; --blue-700: #2563eb; --blue-600: #3b82f6;
+  --blue-100: #dbeafe; --blue-50: #eff6ff;
+  --green-700: #15803d; --green-600: #16a34a; --green-100: #dcfce7; --green-50: #f0fdf4;
+  --red-600: #dc2626; --red-100: #fee2e2; --red-50: #fef2f2;
+  --yellow-700: #a16207; --yellow-100: #fef9c3; --yellow-50: #fffbeb;
+  --purple-600: #9333ea; --purple-50: #faf5ff; --purple-100: #f3e8ff;
+  --gray-50: #f9fafb; --gray-100: #f3f4f6; --gray-200: #e5e7eb; --gray-300: #d1d5db;
+  --gray-400: #9ca3af; --gray-500: #6b7280; --gray-600: #4b5563;
+  --gray-700: #374151; --gray-800: #1f2937; --gray-900: #111827;
+  --shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+  --radius: 12px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background:var(--gray-50); color:var(--gray-800); line-height:1.5; }
+.container { max-width:1280px; margin:0 auto; padding:16px; }
+.header { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:12px; margin-bottom:20px; }
+.header h1 { font-size:1.6rem; color:var(--blue-900); font-weight:800; }
+.header .sub { font-size:0.8rem; color:var(--gray-500); margin-top:2px; }
+.header-actions { display:flex; gap:8px; flex-wrap:wrap; }
+.btn { display:inline-flex; align-items:center; gap:6px; padding:8px 16px; border-radius:8px; font-size:0.85rem; font-weight:600; cursor:pointer; border:1px solid var(--gray-300); background:white; color:var(--gray-700); transition:all 0.15s; }
+.btn:hover { background:var(--gray-100); }
+.btn-primary { background:var(--blue-900); color:white; border-color:var(--blue-900); }
+.btn-primary:hover { background:#15304f; }
+.btn-sm { padding:6px 12px; font-size:0.78rem; }
+.btn-danger { color:var(--red-600); border-color:#fca5a5; }
+.btn-danger:hover { background:var(--red-50); }
+.summary-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px; margin-bottom:20px; }
+.summary-card { background:white; border-radius:var(--radius); padding:14px 18px; box-shadow:var(--shadow); border-left:4px solid var(--blue-700); }
+.summary-card.green { border-left-color:var(--green-600); }
+.summary-card.red { border-left-color:var(--red-600); }
+.summary-card.purple { border-left-color:var(--purple-600); }
+.summary-card .label { font-size:0.72rem; color:var(--gray-500); font-weight:500; }
+.summary-card .value { font-size:1.35rem; font-weight:800; color:var(--blue-900); margin-top:2px; }
+.summary-card.green .value { color:var(--green-700); }
+.summary-card.red .value { color:var(--red-600); }
+.summary-card.purple .value { color:var(--purple-600); }
+.nav-tabs { display:flex; gap:4px; margin-bottom:20px; overflow-x:auto; padding-bottom:4px; }
+.nav-tab { padding:10px 18px; border-radius:8px; font-size:0.85rem; font-weight:600; cursor:pointer; border:none; white-space:nowrap; background:white; color:var(--gray-600); transition:all 0.15s; box-shadow:var(--shadow); }
+.nav-tab:hover { background:var(--blue-50); color:var(--blue-700); }
+.nav-tab.active { background:var(--blue-900); color:white; }
+.card { background:white; border-radius:var(--radius); box-shadow:var(--shadow); margin-bottom:16px; overflow:hidden; }
+.card-header { padding:14px 20px; border-bottom:1px solid var(--gray-100); font-weight:700; font-size:0.95rem; color:var(--blue-900); display:flex; justify-content:space-between; align-items:center; }
+.card-body { padding:16px 20px; }
+.form-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:14px; }
+.form-group { display:flex; flex-direction:column; gap:4px; }
+.form-group label { font-size:0.78rem; font-weight:600; color:var(--gray-600); }
+.form-group input,.form-group select { padding:8px 12px; border:1px solid var(--gray-300); border-radius:8px; font-size:0.9rem; text-align:right; background:white; width:100%; }
+.form-group input:focus,.form-group select:focus { outline:none; border-color:var(--blue-600); box-shadow:0 0 0 3px rgba(59,130,246,0.1); }
+.form-group .info { font-size:0.72rem; color:var(--gray-400); }
+.form-group .computed { font-size:0.85rem; font-weight:700; color:var(--blue-700); padding:4px 0; }
+.week-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:8px; }
+.week-grid label { font-size:0.7rem; text-align:center; }
+.week-grid input { text-align:center; padding:6px 4px; font-size:0.8rem; border:1px solid var(--gray-300); border-radius:6px; }
+.week-grid input:focus { outline:none; border-color:var(--blue-600); }
+.section-label { font-size:0.82rem; font-weight:700; color:var(--blue-700); margin:14px 0 8px; padding-bottom:4px; border-bottom:1px solid var(--blue-100); }
+.section-label.green { color:var(--green-700); border-bottom-color:var(--green-100); }
+.section-label.red { color:var(--red-600); border-bottom-color:var(--red-100); }
+.section-label.purple { color:var(--purple-600); border-bottom-color:var(--purple-100); }
+.subtotal { display:flex; justify-content:space-between; align-items:center; padding:8px 0; font-weight:700; font-size:0.9rem; }
+.subtotal.bt { border-top:2px solid var(--gray-200); margin-top:8px; padding-top:12px; }
+.table-wrap { overflow-x:auto; }
+table { width:100%; border-collapse:collapse; font-size:0.78rem; }
+thead th { text-align:right; padding:8px 6px; font-weight:700; font-size:0.7rem; color:var(--gray-500); text-transform:uppercase; letter-spacing:0.03em; border-bottom:2px solid var(--gray-200); white-space:nowrap; }
+thead th:first-child { text-align:left; }
+tbody td { padding:8px 6px; text-align:right; border-bottom:1px solid var(--gray-100); }
+tbody td:first-child { text-align:left; font-weight:600; }
+tbody tr:hover { background:var(--gray-50); }
+.tg { color:var(--green-600); } .tr { color:var(--red-600); } .tb { color:var(--blue-900); font-weight:700; }
+.stock-table input { width:90px; padding:4px 8px; text-align:right; font-size:0.82rem; border:1px solid var(--gray-300); border-radius:6px; }
+.stock-total td { font-weight:800; background:var(--gray-50); }
+.vacation-item,.sonder-item { display:flex; align-items:center; gap:10px; padding:10px; background:var(--gray-50); border-radius:8px; margin-bottom:8px; }
+.vacation-item input[type="date"],.sonder-item input { padding:6px 10px; border:1px solid var(--gray-300); border-radius:6px; font-size:0.85rem; }
+.sonder-item input[type="text"] { text-align:left; flex:2; min-width:120px; }
+.sonder-item input[type="number"] { text-align:right; flex:1; min-width:100px; }
+.vacation-item label,.sonder-item label { font-size:0.72rem; font-weight:600; color:var(--gray-500); }
+.time-btns { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px; }
+.charts-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); gap:16px; }
+.chart-container { position:relative; height:280px; }
+.alert { padding:12px 16px; border-radius:8px; font-size:0.85rem; font-weight:600; margin-bottom:16px; display:flex; align-items:center; gap:8px; }
+.alert-danger { background:var(--red-50); color:var(--red-600); border:1px solid #fca5a5; }
+.dialog-overlay { display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.4); z-index:100; align-items:center; justify-content:center; }
+.dialog-overlay.open { display:flex; }
+.dialog { background:white; border-radius:var(--radius); padding:24px; width:90%; max-width:420px; box-shadow:0 20px 60px rgba(0,0,0,0.2); }
+.dialog h3 { font-size:1.1rem; color:var(--blue-900); margin-bottom:4px; }
+.dialog p { font-size:0.85rem; color:var(--gray-500); margin-bottom:16px; }
+.radio-group { display:flex; flex-direction:column; gap:8px; margin-bottom:16px; }
+.radio-group label { display:flex; align-items:center; gap:8px; cursor:pointer; padding:4px 0; font-size:0.9rem; }
+.dialog-actions { display:flex; justify-content:flex-end; gap:8px; padding-top:12px; border-top:1px solid var(--gray-200); }
+.tab-content { display:none; } .tab-content.active { display:block; }
+.basis-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.basis-row { display:flex; justify-content:space-between; padding:3px 0; font-size:0.83rem; }
+.basis-total { display:flex; justify-content:space-between; padding:8px 0 3px; font-size:0.95rem; font-weight:800; border-top:2px solid var(--gray-200); }
+.q-highlight { background:var(--yellow-50); }
+input[type="file"].hidden { display:none; }
+@media(max-width:640px) { .container{padding:10px;} .header h1{font-size:1.2rem;} .form-grid{grid-template-columns:1fr;} .charts-grid{grid-template-columns:1fr;} .basis-grid{grid-template-columns:1fr;} .week-grid{gap:4px;} }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div><h1>Liquiditätsplaner Ramin</h1><div class="sub" id="ratesInfo">Wird geladen...</div></div>
+    <div class="header-actions">
+      <button class="btn btn-primary" onclick="openReportDialog()">&#128196; Bericht</button>
+      <button class="btn" onclick="refreshRates()" id="refreshBtn">&#x21bb; Aktualisieren</button>
+      <button class="btn" onclick="exportJSON()">&#x2B73; Export</button>
+      <label class="btn">&#x2B71; Import <input type="file" class="hidden" accept=".json" onchange="importJSON(event)"></label>
+    </div>
+  </div>
+
+  <div class="summary-row">
+    <div class="summary-card"><div class="label">Gesamtvermögen</div><div class="value" id="sumTotal">0 €</div></div>
+    <div class="summary-card green"><div class="label">Liquide Mittel</div><div class="value" id="sumLiquid">0 €</div></div>
+    <div class="summary-card green"><div class="label">Monatl. Einnahmen (inkl. KV)</div><div class="value" id="sumIncome">0 €</div></div>
+    <div class="summary-card red"><div class="label">Monatl. Ausgaben (Ø inkl. FA+Sonder)</div><div class="value" id="sumExpenses">0 €</div></div>
+    <div class="summary-card purple"><div class="label">Monatl. Überschuss (Ø)</div><div class="value" id="sumSurplus">0 €</div></div>
+  </div>
+
+  <div class="nav-tabs" id="navTabs">
+    <button class="nav-tab active" data-tab="vermoegen">Vermögen</button>
+    <button class="nav-tab" data-tab="einnahmen">Einnahmen</button>
+    <button class="nav-tab" data-tab="ausgaben">Ausgaben</button>
+    <button class="nav-tab" data-tab="prognose">Prognose</button>
+    <button class="nav-tab" data-tab="charts">Auswertung</button>
+  </div>
+
+  <!-- VERMÖGEN -->
+  <div class="tab-content active" id="tab-vermoegen">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px">
+      <div class="card"><div class="card-header">Bankkonten</div><div class="card-body"><div class="form-grid">
+        <div class="form-group"><label>Apobank 00</label><input type="number" data-path="accounts" data-field="apo00" step="0.01"></div>
+        <div class="form-group"><label>Apobank 10</label><input type="number" data-path="accounts" data-field="apo10" step="0.01"></div>
+        <div class="form-group"><label>Apobank 20</label><input type="number" data-path="accounts" data-field="apo20" step="0.01"></div>
+        <div class="form-group"><label>SPK Privat</label><input type="number" data-path="accounts" data-field="spkPrivat" step="0.01"></div>
+        <div class="form-group"><label>SPK Miete</label><input type="number" data-path="accounts" data-field="spkMiete" step="0.01"></div>
+        <div class="form-group"><label>SPK Sparkonto</label><input type="number" data-path="accounts" data-field="spkSparkonto" step="0.01"></div>
+      </div></div></div>
+      <div class="card"><div class="card-header">Barbestände &amp; Gold</div><div class="card-body"><div class="form-grid">
+        <div class="form-group"><label>Euro bar (Reserve)</label><input type="number" data-path="accounts" data-field="euroCash" step="0.01"></div>
+        <div class="form-group"><label>Dollar bar</label><input type="number" data-path="accounts" data-field="dollarCash" step="0.01"><div class="info">Kurs: <span id="dspDollarRate">0</span> — Wert: <span id="dspDollarVal" style="font-weight:700;color:var(--blue-700)">0 €</span></div></div>
+        <div class="form-group"><label>Gold (Unzen)</label><input type="number" data-path="accounts" data-field="goldOunces" step="0.01"></div>
+        <div class="form-group"><label>Goldpreis/Unze (€)</label><input type="number" data-path="accounts" data-field="goldPricePerOunce" step="0.01"><div class="info" style="font-weight:700;color:var(--yellow-700)">Goldwert: <span id="dspGoldVal">0 €</span></div></div>
+      </div></div></div>
+    </div>
+    <div class="card"><div class="card-header">Aktienportfolio <button class="btn btn-sm" onclick="addStock()">+ Aktie</button></div><div class="card-body"><div class="table-wrap">
+      <table class="stock-table"><thead><tr><th style="text-align:left">Aktie</th><th>Stück</th><th>Kaufkurs</th><th>Akt. Kurs</th><th>Wert</th><th>+/−</th><th></th></tr></thead><tbody id="stocksBody"></tbody></table>
+    </div></div></div>
+  </div>
+
+  <!-- EINNAHMEN -->
+  <div class="tab-content" id="tab-einnahmen">
+    <div class="card"><div class="card-header">Monatliche Einnahmen</div><div class="card-body"><div class="form-grid">
+      <div class="form-group"><label>Mieteinnahmen (monatlich)</label><input type="number" data-path="income" data-field="rentMonthly" step="0.01"></div>
+      <div class="form-group"><label>Kassenpatienten (monatlich)</label><input type="number" data-path="income" data-field="kassenpatientenMonthly" step="0.01"></div>
+    </div></div></div>
+    <div class="card"><div class="card-header">Privatpatienten (wöchentlich)</div><div class="card-body">
+      <div class="section-label" style="margin-top:0">HNO-Zentrum Bonn</div>
+      <div class="week-grid" id="hnoWeeks"></div>
+      <div class="subtotal"><span>Summe HNO:</span><span id="dspHnoTotal" class="tb">0 €</span></div>
+      <div class="section-label green" style="margin-top:16px">Betaklinik</div>
+      <div class="week-grid" id="betaWeeks"></div>
+      <div class="subtotal"><span>Summe Beta:</span><span id="dspBetaTotal" style="color:var(--green-700)">0 €</span></div>
+      <div class="subtotal bt"><span>Gesamt Privatpatienten:</span><span id="dspPrivateTotal">0 €</span></div>
+    </div></div>
+    <div class="card"><div class="card-header">KV-Zahlungen</div><div class="card-body">
+      <div class="form-grid">
+        <div class="form-group"><label>KV Abschlag (monatlich)</label><input type="number" data-path="income" data-field="kvMonthly" step="0.01"><div class="info">Wird jeden Monat eingerechnet</div></div>
+        <div class="form-group"><label>KV Restzahlung/Sonderzahlung (quartalsweise)</label><input type="number" data-path="income" data-field="kvSonderzahlung" step="0.01"><div class="info">Nur in Quartalsendmonaten (Mär, Jun, Sep, Dez)</div></div>
+      </div>
+    </div></div>
+  </div>
+
+  <!-- AUSGABEN -->
+  <div class="tab-content" id="tab-ausgaben">
+    <div class="card"><div class="card-header">Reguläre Ausgaben</div><div class="card-body">
+      <div class="form-grid">
+        <div class="form-group"><label>Fixkosten (monatlich)</label><input type="number" data-path="expenses" data-field="fixkostenMonthly" step="0.01"></div>
+        <div class="form-group"><label>Finanzamt (quartalsweise)</label><input type="number" data-path="expenses" data-field="finanzamtQuarterly" step="0.01"><div class="info">Zahlung in März, Juni, Sep, Dezember</div></div>
+        <div class="form-group"><label>Variable Kosten (monatlich)</label><input type="number" data-path="expenses" data-field="variableMonthly" step="0.01"></div>
+      </div>
+      <div class="subtotal" style="margin-top:12px"><span>Monatlich (ohne FA):</span><span id="dspExpMonth">0 €</span></div>
+      <div class="subtotal"><span>FA Ø pro Monat:</span><span id="dspExpFaAvg">0 €</span></div>
+      <div class="subtotal bt"><span>Ø Reguläre Ausgaben/Monat:</span><span id="dspExpAvg">0 €</span></div>
+    </div></div>
+
+    <div class="card"><div class="card-header">Sonderausgaben (monatliche Pauschalen) <button class="btn btn-sm" onclick="addSonderausgabe()">+ Hinzufügen</button></div>
+    <div class="card-body" id="sonderList"><p style="font-size:0.85rem;color:var(--gray-400)">Keine Sonderausgaben eingetragen</p></div></div>
+
+    <div class="card"><div class="card-header">Urlaubs-/Ausfallzeiten <button class="btn btn-sm" onclick="addVacation()">+ Urlaub</button></div>
+    <div class="card-body" id="vacationList"><p style="font-size:0.85rem;color:var(--gray-400)">Keine Urlaubszeiten eingetragen</p></div></div>
+  </div>
+
+  <!-- PROGNOSE -->
+  <div class="tab-content" id="tab-prognose">
+    <div class="card"><div class="card-header">Prognosezeitraum</div><div class="card-body"><div class="time-btns" id="forecastBtns"></div></div></div>
+
+    <div class="card"><div class="card-header">Berechnungsgrundlage (pro Monat)</div><div class="card-body">
+      <div class="basis-grid">
+        <div>
+          <div class="section-label" style="margin-top:0">Einnahmen</div>
+          <div class="basis-row"><span>Privatpatienten (HNO+Beta):</span><span id="fbPriv" class="tg" style="font-weight:600">0 €</span></div>
+          <div class="basis-row"><span>Kassenpatienten:</span><span id="fbKassen" class="tg" style="font-weight:600">0 €</span></div>
+          <div class="basis-row"><span>Mieteinnahmen:</span><span id="fbRent" class="tg" style="font-weight:600">0 €</span></div>
+          <div class="basis-row"><span>KV Abschlag (monatlich):</span><span id="fbKvM" class="tg" style="font-weight:600">0 €</span></div>
+          <div class="basis-row" style="color:var(--gray-400)"><span>KV Sonderzahlung (nur Q-Monate):</span><span id="fbKvS" style="font-weight:600">0 €</span></div>
+          <div class="basis-total"><span>Summe Einnahmen:</span><span id="fbIncT" class="tg">0 €</span></div>
+        </div>
+        <div>
+          <div class="section-label red" style="margin-top:0">Ausgaben</div>
+          <div class="basis-row"><span>Fixkosten:</span><span id="fbFix" class="tr" style="font-weight:600">0 €</span></div>
+          <div class="basis-row"><span>Variable Kosten:</span><span id="fbVar" class="tr" style="font-weight:600">0 €</span></div>
+          <div class="basis-row"><span>Sonderausgaben:</span><span id="fbSonder" class="tr" style="font-weight:600">0 €</span></div>
+          <div class="basis-row" style="color:var(--gray-400)"><span>Finanzamt (nur Q-Monate):</span><span id="fbFA" style="font-weight:600">0 €</span></div>
+          <div class="basis-total"><span>Summe Ausgaben:</span><span id="fbExpT" class="tr">0 €</span></div>
+        </div>
+      </div>
+      <div id="fbSurplusBox" style="text-align:center;margin-top:12px;padding:10px;border-radius:8px;font-size:1rem;font-weight:800">
+        Monatl. Überschuss (ohne Q-Zahlungen): <span id="fbSurplus">0 €</span>
+      </div>
+    </div></div>
+
+    <div id="forecastAlert"></div>
+    <div class="card"><div class="card-header">Liquiditätsverlauf</div><div class="card-body"><div class="chart-container"><canvas id="chartLiquidity"></canvas></div></div></div>
+    <div class="card"><div class="card-header">Einnahmen vs. Ausgaben</div><div class="card-body"><div class="chart-container"><canvas id="chartIncExp"></canvas></div></div></div>
+    <div class="card"><div class="card-header">Monatliche Aufschlüsselung</div><div class="card-body"><div class="table-wrap">
+      <table><thead><tr>
+        <th style="text-align:left">Monat</th><th>Praxis</th><th>Miete</th><th>KV</th><th>KV-S</th>
+        <th style="font-weight:800;color:var(--green-600)">Einn.</th>
+        <th>Fix+Var</th><th>Sonder</th><th>FA</th>
+        <th style="font-weight:800;color:var(--red-600)">Ausg.</th>
+        <th>+/−</th><th>Saldo</th><th>Arb.</th>
+      </tr></thead><tbody id="forecastBody"></tbody></table>
+    </div></div></div>
+  </div>
+
+  <!-- CHARTS -->
+  <div class="tab-content" id="tab-charts">
+    <div class="charts-grid">
+      <div class="card"><div class="card-header">Vermögensverteilung</div><div class="card-body"><div class="chart-container"><canvas id="chartAssets"></canvas></div></div></div>
+      <div class="card"><div class="card-header">Einnahmen nach Quelle</div><div class="card-body"><div class="chart-container"><canvas id="chartIncSrc"></canvas></div></div></div>
+      <div class="card"><div class="card-header">Portfolio-Verteilung</div><div class="card-body"><div class="chart-container"><canvas id="chartPortfolio"></canvas></div></div></div>
+      <div class="card"><div class="card-header">Gewinn/Verlust pro Aktie</div><div class="card-body"><div class="chart-container"><canvas id="chartPL"></canvas></div></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- Report Dialog -->
+<div class="dialog-overlay" id="reportDialog"><div class="dialog">
+  <h3>Bericht erstellen</h3><p>Wählen Sie den Prognosezeitraum.</p>
+  <div class="radio-group" id="reportRadios"></div>
+  <div class="dialog-actions"><button class="btn" onclick="closeReport()">Abbrechen</button><button class="btn btn-primary" onclick="generatePDF()">PDF herunterladen</button></div>
+</div></div>
+
+<script>
+// ============ DATA ============
+const STORE_KEY = 'liquiditaetsplaner-ramin-v4';
+const WPM = 4.33; // Wochen pro Monat
+
+const defaults = () => ({
+  accounts: { apo00:0, apo10:0, apo20:0, spkPrivat:0, spkMiete:0, spkSparkonto:0, euroCash:15000, dollarCash:15700, dollarRate:0.92, goldOunces:0, goldPricePerOunce:2450 },
+  stocks: [
+    { symbol:'AAPL', name:'Apple Inc.', shares:25, buyPrice:174.49, currentPrice:235 },
+    { symbol:'DBK.DE', name:'Deutsche Bank AG', shares:50, buyPrice:9.14, currentPrice:33.2 },
+    { symbol:'PAH3.DE', name:'Porsche AG Vz.', shares:4, buyPrice:116, currentPrice:45 },
+    { symbol:'OGZD', name:'Gazprom ADR', shares:190, buyPrice:8.12, currentPrice:2.7 },
+    { symbol:'SBUX', name:'Starbucks Corp.', shares:15, buyPrice:79.53, currentPrice:72 },
+    { symbol:'TSLA', name:'Tesla Inc.', shares:6, buyPrice:312.17, currentPrice:392 }
+  ],
+  income: { rentMonthly:4800, kassenpatientenMonthly:0, privatHnoWeekly:[25000,25000,25000,25000,0], privatBetaWeekly:[3000,3000,3000,3000,0], kvMonthly:58600, kvSonderzahlung:30000 },
+  expenses: { fixkostenMonthly:80000, finanzamtQuarterly:0, variableMonthly:0 },
+  sonderausgaben: []
+  vacations: [],
+  forecastMonths: 12
+});
+
+let D = loadData();
+function loadData() { try { const s=localStorage.getItem(STORE_KEY); if(s){const p=JSON.parse(s); const d=defaults(); return {...d,...p, accounts:{...d.accounts,...(p.accounts||{})}, income:{...d.income,...(p.income||{})}, expenses:{...d.expenses,...(p.expenses||{})} };} } catch(e){} return defaults(); }
+function save() { try{localStorage.setItem(STORE_KEY,JSON.stringify(D));}catch(e){} }
+
+// ============ FORMAT ============
+const fmt = v => new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR',minimumFractionDigits:2}).format(v);
+const fmtN = (v,d=2) => new Intl.NumberFormat('de-DE',{minimumFractionDigits:d,maximumFractionDigits:d}).format(v);
+const fmtP = v => `${v>=0?'+':''}${fmtN(v,1)}%`;
+const fmtD = d => new Intl.DateTimeFormat('de-DE').format(d instanceof Date?d:new Date(d));
+const fmtMY = d => { const dt=d instanceof Date?d:new Date(d); return dt.toLocaleDateString('de-DE',{month:'long',year:'numeric'}); };
+const fmtMS = d => { const dt=d instanceof Date?d:new Date(d); return dt.toLocaleDateString('de-DE',{month:'short',year:'2-digit'}); };
+
+// ============ CALC ============
+const acctTotal = a => a.apo00+a.apo10+a.apo20+a.spkPrivat+a.spkMiete+a.spkSparkonto;
+const liquidAssets = a => acctTotal(a)+a.euroCash;
+const totalAssets = (a,st) => acctTotal(a)+a.euroCash+(a.dollarCash*a.dollarRate)+(a.goldOunces*a.goldPricePerOunce)+st.reduce((s,x)=>s+x.shares*x.currentPrice,0);
+const stockVal = st => st.reduce((s,x)=>s+x.shares*x.currentPrice,0);
+const privPat = inc => inc.privatHnoWeekly.reduce((s,w)=>s+w,0)+inc.privatBetaWeekly.reduce((s,w)=>s+w,0);
+const isQE = m => m===2||m===5||m===8||m===11;
+const sonderTotal = () => D.sonderausgaben.reduce((s,x)=>s+(x.amount||0),0);
+
+function vacDaysInMonth(y,m,vacs) {
+  const ms=new Date(y,m,1), me=new Date(y,m+1,0);
+  let d=0;
+  vacs.forEach(v=>{if(!v.from||!v.to)return; const vs=new Date(v.from),ve=new Date(v.to); const os=vs>ms?vs:ms,oe=ve<me?ve:me; if(os<=oe) d+=Math.round((oe-os)/864e5)+1;});
+  return d;
+}
+
+function calcForecast(months) {
+  const {income:inc, expenses:exp, vacations:vacs} = D;
+  const fm = months || D.forecastMonths;
+  const fc=[]; let cum=liquidAssets(D.accounts);
+  const now=new Date();
+  for(let i=0;i<fm;i++){
+    const y=now.getFullYear()+Math.floor((now.getMonth()+i)/12);
+    const m=(now.getMonth()+i)%12;
+    const dt=new Date(y,m,1);
+    const vd=vacDaysInMonth(y,m,vacs), vw=vd/7;
+    const wf=Math.max(0,(WPM-vw)/WPM);
+    // Einnahmen
+    const practice=(privPat(inc)+inc.kassenpatientenMonthly)*wf; // Urlaub betroffen
+    const rent=inc.rentMonthly; // immer
+    const kv=inc.kvMonthly; // monatlich, NICHT von Urlaub betroffen
+    const kvS=isQE(m)?inc.kvSonderzahlung:0; // nur Quartal
+    const totInc=practice+rent+kv+kvS;
+    // Ausgaben
+    const fixVar=exp.fixkostenMonthly+exp.variableMonthly;
+    const sonder=sonderTotal();
+    const fa=isQE(m)?exp.finanzamtQuarterly:0;
+    const totExp=fixVar+sonder+fa;
+    const surplus=totInc-totExp;
+    cum+=surplus;
+    fc.push({date:dt, income:totInc, expenses:totExp, surplus, cumulativeBalance:cum, workFactor:wf,
+      d:{practice,rent,kv,kvS,fixVar,sonder,fa}});
+  }
+  return fc;
+}
+
+// ============ RENDER: Stocks ============
+function renderStocks(){
+  const tb=document.getElementById('stocksBody'); tb.innerHTML='';
+  let tv=0,tbv=0;
+  D.stocks.forEach((s,i)=>{
+    const cv=s.shares*s.currentPrice, bv=s.shares*s.buyPrice, pl=cv-bv, pp=bv>0?(pl/bv)*100:0;
+    tv+=cv; tbv+=bv;
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td style="text-align:left"><strong>${s.name}</strong><br><span style="font-size:0.7rem;color:var(--gray-400)">${s.symbol}</span></td><td>${s.shares}</td><td>${fmt(s.buyPrice)}</td><td><input type="number" step="0.01" value="${s.currentPrice}" onchange="D.stocks[${i}].currentPrice=parseFloat(this.value)||0;save();renderStocks();updateSummary()"></td><td>${fmt(cv)}</td><td class="${pl>=0?'tg':'tr'}">${fmtP(pp)}</td><td><button class="btn btn-sm btn-danger" onclick="D.stocks.splice(${i},1);save();renderStocks();updateSummary()">&#x2715;</button></td>`;
+    tb.appendChild(tr);
+  });
+  const tpl=tv-tbv, tpp=tbv>0?(tpl/tbv)*100:0;
+  const tr=document.createElement('tr'); tr.className='stock-total';
+  tr.innerHTML=`<td style="text-align:left" colspan="4">SUMME</td><td>${fmt(tv)}</td><td class="${tpl>=0?'tg':'tr'}">${fmtP(tpp)}</td><td></td>`;
+  tb.appendChild(tr);
+}
+function addStock(){const s=prompt('Symbol:');if(!s)return;const n=prompt('Name:')||s;D.stocks.push({symbol:s.toUpperCase(),name:n,shares:0,buyPrice:0,currentPrice:0});save();renderStocks();}
+
+// ============ RENDER: Weeks ============
+function renderWeeks(id,arr,key){
+  const c=document.getElementById(id); c.innerHTML='';
+  arr.forEach((v,i)=>{const d=document.createElement('div');d.innerHTML=`<label>Wo ${i+1}</label><input type="number" value="${v}" step="0.01">`;d.querySelector('input').addEventListener('input',e=>{D.income[key][i]=parseFloat(e.target.value)||0;save();updateAll();});c.appendChild(d);});
+}
+
+// ============ RENDER: Sonderausgaben ============
+function renderSonderausgaben(){
+  const c=document.getElementById('sonderList');
+  if(!D.sonderausgaben.length){c.innerHTML='<p style="font-size:0.85rem;color:var(--gray-400)">Keine Sonderausgaben eingetragen</p>';return;}
+  c.innerHTML='';
+  D.sonderausgaben.forEach((s,i)=>{
+    const d=document.createElement('div'); d.className='sonder-item';
+    d.innerHTML=`<div style="flex:2"><label>Bezeichnung</label><br><input type="text" value="${s.name||''}" placeholder="z.B. Heizung" onchange="D.sonderausgaben[${i}].name=this.value;save()"></div><div style="flex:1"><label>Betrag/Monat (€)</label><br><input type="number" step="0.01" value="${s.amount||0}" onchange="D.sonderausgaben[${i}].amount=parseFloat(this.value)||0;save();updateAll()"></div><button class="btn btn-sm btn-danger" onclick="D.sonderausgaben.splice(${i},1);save();renderSonderausgaben();updateAll()">&#x2715;</button>`;
+    c.appendChild(d);
+  });
+  // Summe
+  const sum=document.createElement('div');
+  sum.className='subtotal bt';
+  sum.innerHTML=`<span>Summe Sonderausgaben/Monat:</span><span class="tr">${fmt(sonderTotal())}</span>`;
+  c.appendChild(sum);
+}
+function addSonderausgabe(){D.sonderausgaben.push({name:'',amount:0});save();renderSonderausgaben();}
+
+// ============ RENDER: Vacations ============
+function renderVacations(){
+  const c=document.getElementById('vacationList');
+  if(!D.vacations.length){c.innerHTML='<p style="font-size:0.85rem;color:var(--gray-400)">Keine Urlaubszeiten eingetragen</p>';return;}
+  c.innerHTML='';
+  D.vacations.forEach((v,i)=>{
+    const d=document.createElement('div'); d.className='vacation-item';
+    d.innerHTML=`<div><label>Von</label><br><input type="date" value="${v.from}" onchange="D.vacations[${i}].from=this.value;save();updateAll()"></div><div><label>Bis</label><br><input type="date" value="${v.to}" onchange="D.vacations[${i}].to=this.value;save();updateAll()"></div><button class="btn btn-sm btn-danger" onclick="D.vacations.splice(${i},1);save();renderVacations();updateAll()">&#x2715;</button>`;
+    c.appendChild(d);
+  });
+}
+function addVacation(){D.vacations.push({from:'',to:''});save();renderVacations();}
+
+// ============ RENDER: Forecast ============
+function renderForecastBtns(){
+  const c=document.getElementById('forecastBtns');c.innerHTML='';
+  [1,3,6,12,24].forEach(m=>{const b=document.createElement('button');b.className=`btn btn-sm ${D.forecastMonths===m?'btn-primary':''}`;b.textContent=`${m} ${m===1?'Monat':'Monate'}`;b.onclick=()=>{D.forecastMonths=m;save();updateAll();};c.appendChild(b);});
+}
+
+function renderForecastBasis(){
+  const inc=D.income, exp=D.expenses;
+  const priv=privPat(inc);
+  document.getElementById('fbPriv').textContent=fmt(priv);
+  document.getElementById('fbKassen').textContent=fmt(inc.kassenpatientenMonthly);
+  document.getElementById('fbRent').textContent=fmt(inc.rentMonthly);
+  document.getElementById('fbKvM').textContent=fmt(inc.kvMonthly);
+  document.getElementById('fbKvS').textContent=fmt(inc.kvSonderzahlung);
+  const incT=priv+inc.kassenpatientenMonthly+inc.rentMonthly+inc.kvMonthly;
+  document.getElementById('fbIncT').textContent=fmt(incT);
+
+  document.getElementById('fbFix').textContent=fmt(exp.fixkostenMonthly);
+  document.getElementById('fbVar').textContent=fmt(exp.variableMonthly);
+  const sond=sonderTotal();
+  document.getElementById('fbSonder').textContent=fmt(sond);
+  document.getElementById('fbFA').textContent=fmt(exp.finanzamtQuarterly);
+  const expT=exp.fixkostenMonthly+exp.variableMonthly+sond;
+  document.getElementById('fbExpT').textContent=fmt(expT);
+
+  const surplus=incT-expT;
+  document.getElementById('fbSurplus').textContent=fmt(surplus);
+  const box=document.getElementById('fbSurplusBox');
+  box.style.background=surplus>=0?'var(--green-50)':'var(--red-50)';
+  box.style.color=surplus>=0?'var(--green-700)':'var(--red-600)';
+}
+
+let lastFC=[];
+function renderForecast(){
+  const fc=calcForecast(); lastFC=fc;
+  renderForecastBasis();
+  const tb=document.getElementById('forecastBody'); tb.innerHTML='';
+  let neg=false;
+  fc.forEach(f=>{
+    if(f.cumulativeBalance<0)neg=true;
+    const d=f.d, tr=document.createElement('tr');
+    const qm=d.kvS>0||d.fa>0;
+    if(qm) tr.className='q-highlight';
+    tr.innerHTML=`
+      <td style="text-align:left">${fmtMY(f.date)}</td>
+      <td class="tg">${fmt(d.practice)}</td>
+      <td style="color:var(--green-700)">${fmt(d.rent)}</td>
+      <td class="tg">${fmt(d.kv)}</td>
+      <td style="color:${d.kvS>0?'var(--blue-700)':'var(--gray-300)'};font-weight:${d.kvS>0?'700':'400'}">${d.kvS>0?fmt(d.kvS):'—'}</td>
+      <td class="tg" style="font-weight:700;background:var(--green-50)">${fmt(f.income)}</td>
+      <td class="tr">${fmt(d.fixVar)}</td>
+      <td style="color:${d.sonder>0?'var(--purple-600)':'var(--gray-300)'}">${d.sonder>0?fmt(d.sonder):'—'}</td>
+      <td style="color:${d.fa>0?'var(--red-600)':'var(--gray-300)'};font-weight:${d.fa>0?'700':'400'}">${d.fa>0?fmt(d.fa):'—'}</td>
+      <td class="tr" style="font-weight:700;background:var(--red-50)">${fmt(f.expenses)}</td>
+      <td class="${f.surplus<0?'tr':'tg'}" style="font-weight:800">${fmt(f.surplus)}</td>
+      <td class="${f.cumulativeBalance<0?'tr':'tb'}">${fmt(f.cumulativeBalance)}</td>
+      <td style="text-align:center">${(f.workFactor*100).toFixed(0)}%</td>`;
+    tb.appendChild(tr);
+  });
+  document.getElementById('forecastAlert').innerHTML=neg?'<div class="alert alert-danger">&#x26A0; Liquidität wird voraussichtlich negativ!</div>':'';
+  if(document.getElementById('tab-prognose').classList.contains('active')) renderFCCharts(fc);
+}
+
+// ============ CHARTS ============
+let CI={};
+function dc(id){if(CI[id]){CI[id].destroy();delete CI[id];}}
+
+function renderFCCharts(fc){
+  const lb=fc.map(f=>fmtMS(f.date));
+  dc('chartLiquidity');
+  CI.chartLiquidity=new Chart(document.getElementById('chartLiquidity'),{type:'line',data:{labels:lb,datasets:[{label:'Liquidität',data:fc.map(f=>f.cumulativeBalance),borderColor:'#1e3a5f',backgroundColor:'rgba(30,58,95,0.1)',fill:true,tension:0.3,borderWidth:2,pointRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{tooltip:{callbacks:{label:c=>fmt(c.raw)}}},scales:{y:{ticks:{callback:v=>`${(v/1000).toFixed(0)}k`}}}}});
+  dc('chartIncExp');
+  CI.chartIncExp=new Chart(document.getElementById('chartIncExp'),{type:'bar',data:{labels:lb,datasets:[{label:'Einnahmen',data:fc.map(f=>f.income),backgroundColor:'#16a34a'},{label:'Ausgaben',data:fc.map(f=>f.expenses),backgroundColor:'#dc2626'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${fmt(c.raw)}`}}},scales:{y:{ticks:{callback:v=>`${(v/1000).toFixed(0)}k`}}}}});
+}
+
+function renderAnalysisCharts(){
+  const a=D.accounts, col=['#1e3a5f','#3b82f6','#f59e0b','#16a34a','#8b5cf6','#ef4444','#06b6d4'];
+  const ad=[{l:'Bankkonten',v:acctTotal(a)},{l:'Bargeld',v:a.euroCash+a.dollarCash*a.dollarRate},{l:'Gold',v:a.goldOunces*a.goldPricePerOunce},{l:'Aktien',v:stockVal(D.stocks)}].filter(x=>x.v>0);
+  dc('chartAssets');
+  CI.chartAssets=new Chart(document.getElementById('chartAssets'),{type:'doughnut',data:{labels:ad.map(x=>x.l),datasets:[{data:ad.map(x=>x.v),backgroundColor:col}]},options:{responsive:true,maintainAspectRatio:false,plugins:{tooltip:{callbacks:{label:c=>`${c.label}: ${fmt(c.raw)}`}}}}});
+
+  const inc=D.income,hno=inc.privatHnoWeekly.reduce((s,w)=>s+w,0),beta=inc.privatBetaWeekly.reduce((s,w)=>s+w,0);
+  const id=[{l:'Miete',v:inc.rentMonthly},{l:'HNO',v:hno},{l:'Beta',v:beta},{l:'Kasse',v:inc.kassenpatientenMonthly},{l:'KV monatl.',v:inc.kvMonthly},{l:'KV Sonder (Ø)',v:inc.kvSonderzahlung/3}].filter(x=>x.v>0);
+  dc('chartIncSrc');
+  CI.chartIncSrc=new Chart(document.getElementById('chartIncSrc'),{type:'bar',data:{labels:id.map(x=>x.l),datasets:[{label:'Betrag',data:id.map(x=>x.v),backgroundColor:col}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>fmt(c.raw)}}},scales:{y:{ticks:{callback:v=>`${(v/1000).toFixed(0)}k`}}}}});
+
+  const pd=D.stocks.map(s=>({l:s.symbol,v:s.shares*s.currentPrice})).filter(x=>x.v>0);
+  dc('chartPortfolio');
+  CI.chartPortfolio=new Chart(document.getElementById('chartPortfolio'),{type:'doughnut',data:{labels:pd.map(x=>x.l),datasets:[{data:pd.map(x=>x.v),backgroundColor:col}]},options:{responsive:true,maintainAspectRatio:false,plugins:{tooltip:{callbacks:{label:c=>`${c.label}: ${fmt(c.raw)}`}}}}});
+
+  const pl=D.stocks.map(s=>({l:s.symbol,v:s.shares*s.currentPrice-s.shares*s.buyPrice})).sort((a,b)=>b.v-a.v);
+  dc('chartPL');
+  CI.chartPL=new Chart(document.getElementById('chartPL'),{type:'bar',data:{labels:pl.map(x=>x.l),datasets:[{label:'G/V',data:pl.map(x=>x.v),backgroundColor:pl.map(x=>x.v>=0?'#16a34a':'#dc2626')}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>fmt(c.raw)}}},scales:{y:{ticks:{callback:v=>`${(v/1000).toFixed(0)}k`}}}}});
+}
+
+// ============ SUMMARY ============
+function updateSummary(){
+  const a=D.accounts, inc=D.income, exp=D.expenses;
+  document.getElementById('sumTotal').textContent=fmt(totalAssets(a,D.stocks));
+  document.getElementById('sumLiquid').textContent=fmt(liquidAssets(a));
+  const mInc=privPat(inc)+inc.kassenpatientenMonthly+inc.rentMonthly+inc.kvMonthly;
+  document.getElementById('sumIncome').textContent=fmt(mInc);
+  const mExp=exp.fixkostenMonthly+exp.variableMonthly+sonderTotal()+exp.finanzamtQuarterly/3;
+  document.getElementById('sumExpenses').textContent=fmt(mExp);
+  const surplus=mInc+inc.kvSonderzahlung/3-mExp;
+  const el=document.getElementById('sumSurplus');
+  el.textContent=fmt(surplus);
+  el.parentElement.className=`summary-card ${surplus>=0?'green':'red'}`;
+
+  document.getElementById('dspDollarRate').textContent=fmtN(a.dollarRate,4);
+  document.getElementById('dspDollarVal').textContent=fmt(a.dollarCash*a.dollarRate);
+  document.getElementById('dspGoldVal').textContent=fmt(a.goldOunces*a.goldPricePerOunce);
+  const hno=inc.privatHnoWeekly.reduce((s,w)=>s+w,0), beta=inc.privatBetaWeekly.reduce((s,w)=>s+w,0);
+  document.getElementById('dspHnoTotal').textContent=fmt(hno);
+  document.getElementById('dspBetaTotal').textContent=fmt(beta);
+  document.getElementById('dspPrivateTotal').textContent=fmt(hno+beta);
+  document.getElementById('dspExpMonth').textContent=fmt(exp.fixkostenMonthly+exp.variableMonthly);
+  document.getElementById('dspExpFaAvg').textContent=fmt(exp.finanzamtQuarterly/3);
+  document.getElementById('dspExpAvg').textContent=fmt(exp.fixkostenMonthly+exp.variableMonthly+exp.finanzamtQuarterly/3);
+  document.getElementById('ratesInfo').textContent=`USD/EUR: ${fmtN(a.dollarRate,4)} | Gold: ${fmt(a.goldPricePerOunce)}/oz`;
+}
+
+// ============ UPDATE ALL ============
+function updateAll(){
+  updateSummary();
+  renderForecastBasis();
+  if(document.getElementById('tab-prognose').classList.contains('active')){renderForecastBtns();renderForecast();}
+  else{lastFC=calcForecast();}
+  if(document.getElementById('tab-charts').classList.contains('active'))renderAnalysisCharts();
+}
+
+// ============ TABS ============
+document.getElementById('navTabs').addEventListener('click',e=>{
+  if(!e.target.classList.contains('nav-tab'))return;
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  e.target.classList.add('active');
+  const tid=e.target.getAttribute('data-tab');
+  document.getElementById('tab-'+tid).classList.add('active');
+  if(tid==='prognose'){renderForecastBtns();renderForecast();}
+  if(tid==='charts')renderAnalysisCharts();
+});
+
+// ============ RATES ============
+async function refreshRates(){
+  const b=document.getElementById('refreshBtn');b.textContent='⟳ Laden...';b.disabled=true;
+  try{const r=await fetch('https://api.frankfurter.app/latest?from=USD&to=EUR');if(r.ok){const d=await r.json();D.accounts.dollarRate=d.rates.EUR;save();updateAll();}}catch(e){}
+  b.textContent='⟳ Aktualisieren';b.disabled=false;
+}
+
+// ============ EXPORT/IMPORT ============
+function exportJSON(){const b=new Blob([JSON.stringify(D,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`liquiditaetsplaner-${new Date().toISOString().split('T')[0]}.json`;a.click();URL.revokeObjectURL(a.href);}
+function importJSON(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{try{const p=JSON.parse(ev.target.result);const d=defaults();D={...d,...p,accounts:{...d.accounts,...(p.accounts||{})},income:{...d.income,...(p.income||{})},expenses:{...d.expenses,...(p.expenses||{})}};if(!D.sonderausgaben)D.sonderausgaben=[];save();initAll();alert('Daten importiert!');}catch(err){alert('Fehler beim Import.');}};r.readAsText(f);e.target.value='';}
+
+// ============ PDF ============
+let rptM='12';
+function openReportDialog(){const c=document.getElementById('reportRadios');c.innerHTML='';[1,3,6,12,24].forEach(m=>{c.innerHTML+=`<label><input type="radio" name="rm" value="${m}" ${m==rptM?'checked':''}> ${m} ${m===1?'Monat':'Monate'}</label>`;});document.getElementById('reportDialog').classList.add('open');}
+function closeReport(){document.getElementById('reportDialog').classList.remove('open');}
+
+function generatePDF(){
+  const sel=document.querySelector('input[name="rm"]:checked');if(sel)rptM=sel.value;
+  const months=parseInt(rptM);
+  const{jsPDF}=window.jspdf;const doc=new jsPDF();const pw=doc.internal.pageSize.getWidth(),mg=14;let y=20;
+  const addT=t=>{y+=10;if(y>260){doc.addPage();y=20;}doc.setFontSize(13);doc.setFont('helvetica','bold');doc.setTextColor(30,58,95);doc.text(t,mg,y);y+=7;doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(0,0,0);};
+
+  doc.setFontSize(17);doc.setFont('helvetica','bold');doc.setTextColor(30,58,95);
+  doc.text('Liquiditaetsplaner Ramin',mg,y);y+=7;
+  doc.setFontSize(9);doc.setFont('helvetica','normal');doc.setTextColor(100,100,100);
+  doc.text(`Bericht vom ${fmtD(new Date())}`,mg,y);doc.text(`${months} Monate`,pw-mg-30,y);y+=4;
+  doc.setDrawColor(200,200,200);doc.line(mg,y,pw-mg,y);
+
+  addT('1. Vermoegensuebersicht');
+  doc.autoTable({startY:y,head:[['Kategorie','Betrag']],body:[['Gesamtvermoegen',fmt(totalAssets(D.accounts,D.stocks))],['Liquide Mittel',fmt(liquidAssets(D.accounts))],['Bargeld+Dollar',fmt(D.accounts.euroCash+D.accounts.dollarCash*D.accounts.dollarRate)],['Gold',fmt(D.accounts.goldOunces*D.accounts.goldPricePerOunce)],['Aktien',fmt(stockVal(D.stocks))]],theme:'striped',headStyles:{fillColor:[30,58,95]},margin:{left:mg,right:mg},styles:{fontSize:8}});
+  y=doc.lastAutoTable.finalY+3;
+
+  addT('2. Bankkonten');
+  const ac=D.accounts;
+  doc.autoTable({startY:y,head:[['Konto','Saldo']],body:[['Apobank 00',fmt(ac.apo00)],['Apobank 10',fmt(ac.apo10)],['Apobank 20',fmt(ac.apo20)],['SPK Privat',fmt(ac.spkPrivat)],['SPK Miete',fmt(ac.spkMiete)],['SPK Sparkonto',fmt(ac.spkSparkonto)]],theme:'striped',headStyles:{fillColor:[30,58,95]},margin:{left:mg,right:mg},styles:{fontSize:8}});
+  y=doc.lastAutoTable.finalY+3;
+
+  if(y>210){doc.addPage();y=20;}
+  addT('3. Aktienportfolio');
+  doc.autoTable({startY:y,head:[['Symbol','Stk','Kurs','Wert','+/-','%']],body:D.stocks.map(s=>{const cv=s.shares*s.currentPrice,bv=s.shares*s.buyPrice,pl=cv-bv,pp=bv>0?(pl/bv)*100:0;return[s.symbol,s.shares,fmt(s.currentPrice),fmt(cv),fmt(pl),fmtN(pp,1)+'%'];}),theme:'striped',headStyles:{fillColor:[30,58,95]},margin:{left:mg,right:mg},styles:{fontSize:8}});
+  y=doc.lastAutoTable.finalY+3;
+
+  if(y>210){doc.addPage();y=20;}
+  addT('4. Einnahmen');
+  const inc=D.income,hno=inc.privatHnoWeekly.reduce((s,w)=>s+w,0),beta=inc.privatBetaWeekly.reduce((s,w)=>s+w,0);
+  doc.autoTable({startY:y,head:[['Quelle','Betrag','Frequenz']],body:[['Miete',fmt(inc.rentMonthly),'monatlich'],['Kassenpatienten',fmt(inc.kassenpatientenMonthly),'monatlich'],['Privat HNO',fmt(hno),'monatlich'],['Privat Beta',fmt(beta),'monatlich'],['KV Abschlag',fmt(inc.kvMonthly),'monatlich'],['KV Sonderzahlung',fmt(inc.kvSonderzahlung),'quartalsweise']],theme:'striped',headStyles:{fillColor:[30,58,95]},margin:{left:mg,right:mg},styles:{fontSize:8}});
+  y=doc.lastAutoTable.finalY+3;
+
+  addT('5. Ausgaben');
+  const exp=D.expenses;
+  const rows=[['Fixkosten',fmt(exp.fixkostenMonthly),'monatlich'],['Variable Kosten',fmt(exp.variableMonthly),'monatlich'],['Finanzamt',fmt(exp.finanzamtQuarterly),'quartalsweise']];
+  D.sonderausgaben.forEach(s=>rows.push(['Sonder: '+(s.name||'?'),fmt(s.amount||0),'monatlich']));
+  doc.autoTable({startY:y,head:[['Kategorie','Betrag','Frequenz']],body:rows,theme:'striped',headStyles:{fillColor:[30,58,95]},margin:{left:mg,right:mg},styles:{fontSize:8}});
+  y=doc.lastAutoTable.finalY+3;
+
+  if(D.vacations.length>0){addT('6. Urlaubszeiten');doc.autoTable({startY:y,head:[['Von','Bis']],body:D.vacations.filter(v=>v.from&&v.to).map(v=>[fmtD(v.from),fmtD(v.to)]),theme:'striped',headStyles:{fillColor:[30,58,95]},margin:{left:mg,right:mg},styles:{fontSize:8}});y=doc.lastAutoTable.finalY+3;}
+
+  doc.addPage();y=20;
+  addT(`7. Liquiditaetsprognose (${months} Monate)`);
+  const fc=calcForecast(months);
+  doc.autoTable({startY:y,head:[['Monat','Praxis','Miete','KV','KV-S','Einn.','Fix+Var','Sonder','FA','Ausg.','+/-','Saldo','Arb.']],body:fc.map(f=>{const d=f.d;return[fmtMY(f.date),fmt(d.practice),fmt(d.rent),fmt(d.kv),d.kvS>0?fmt(d.kvS):'-',fmt(f.income),fmt(d.fixVar),d.sonder>0?fmt(d.sonder):'-',d.fa>0?fmt(d.fa):'-',fmt(f.expenses),fmt(f.surplus),fmt(f.cumulativeBalance),`${(f.workFactor*100).toFixed(0)}%`];}),theme:'striped',headStyles:{fillColor:[30,58,95]},margin:{left:mg,right:mg},styles:{fontSize:5.5}});
+
+  const pgs=doc.getNumberOfPages();for(let i=1;i<=pgs;i++){doc.setPage(i);doc.setFontSize(7);doc.setTextColor(150,150,150);doc.text(`Seite ${i}/${pgs}`,pw/2,doc.internal.pageSize.getHeight()-8,{align:'center'});}
+  doc.save(`Liquiditaetsplaner_${months}Mo_${new Date().toISOString().split('T')[0]}.pdf`);
+  closeReport();
+}
+
+// ============ INIT ============
+function initAll(){
+  document.querySelectorAll('[data-path]').forEach(el=>{
+    const p=el.getAttribute('data-path'),f=el.getAttribute('data-field');
+    el.value=D[p][f]||0;
+    el.oninput=()=>{D[p][f]=parseFloat(el.value)||0;save();updateAll();};
+  });
+  renderWeeks('hnoWeeks',D.income.privatHnoWeekly,'privatHnoWeekly');
+  renderWeeks('betaWeeks',D.income.privatBetaWeekly,'privatBetaWeekly');
+  renderStocks();renderSonderausgaben();renderVacations();renderForecastBtns();updateAll();
+}
+initAll();refreshRates();
+</script>
+</body>
+</html>
