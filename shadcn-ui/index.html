@@ -563,11 +563,21 @@ async function refreshRates(){
   // 1) USD/EUR Wechselkurs
   try{const r=await fetch('https://api.frankfurter.app/latest?from=USD&to=EUR');if(r.ok){const d=await r.json();D.accounts.dollarRate=d.rates.EUR;updated++;}}catch(e){failed++;}
 
-  // 2) Goldpreis (Yahoo: GC=F = Gold Futures in USD)
+  // 2) Goldpreis — mehrere Quellen probieren
+  let goldDone=false;
+  // 2a) goldprice.org
   try{
-    const gp=await fetchYahoo('GC=F');
-    if(gp){D.accounts.goldPricePerOunce=Math.round(gp*D.accounts.dollarRate);updated++;}
-  }catch(e){failed++;}
+    const r=await fetch('https://data-asg.goldprice.org/dbXRates/EUR');
+    if(r.ok){const d=await r.json();if(d.items&&d.items[0]){D.accounts.goldPricePerOunce=Math.round(d.items[0].xauPrice);goldDone=true;updated++;}}
+  }catch(e){}
+  // 2b) Fallback: Yahoo Gold Futures (GC=F in USD → EUR)
+  if(!goldDone){
+    try{
+      const gp=await fetchYahoo('GC=F');
+      if(gp){D.accounts.goldPricePerOunce=Math.round(gp*D.accounts.dollarRate);goldDone=true;updated++;}
+    }catch(e){}
+  }
+  if(!goldDone) failed++;
 
   // 3) Aktienkurse (DE-Aktien in EUR, US-Aktien in USD → umrechnen)
   for(const s of D.stocks){
