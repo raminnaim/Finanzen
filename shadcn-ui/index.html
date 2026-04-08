@@ -267,7 +267,7 @@ const STORE_KEY = 'liquiditaetsplaner-ramin-v4';
 const WPM = 4.33; // Wochen pro Monat
 
 const defaults = () => ({
-  accounts: { apo00:0, apo10:0, apo20:0, spkPrivat:0, spkMiete:0, spkSparkonto:0, euroCash:15000, dollarCash:15700, dollarRate:0.92, goldOunces:0, goldPricePerOunce:2450 },
+  accounts: { apo00:0, apo10:0, apo20:0, spkPrivat:0, spkMiete:0, spkSparkonto:0, euroCash:15000, dollarCash:15000, dollarRate:0.92, goldOunces:0, goldPricePerOunce:2450 },
   stocks: [
     { symbol:'AAPL', name:'Apple Inc.', shares:25, buyPrice:174.49, currentPrice:235 },
     { symbol:'DBK.DE', name:'Deutsche Bank AG', shares:50, buyPrice:9.14, currentPrice:33.2 },
@@ -278,7 +278,7 @@ const defaults = () => ({
   ],
   income: { rentMonthly:4800, kassenpatientenMonthly:0, privatHnoWeekly:[25000,25000,25000,25000,0], privatBetaWeekly:[3000,3000,3000,3000,0], kvMonthly:58600, kvSonderzahlung:30000 },
   expenses: { fixkostenMonthly:80000, finanzamtQuarterly:0, variableMonthly:0 },
-  sonderausgaben: []
+  sonderausgaben: [],
   vacations: [],
   forecastMonths: 12
 });
