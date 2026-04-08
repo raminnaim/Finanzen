@@ -539,10 +539,26 @@ document.getElementById('navTabs').addEventListener('click',e=>{
   if(tid==='charts')renderAnalysisCharts();
 });
 
-// ============ RATES ============
+// ============ RATES & LIVE PRICES ============
 async function refreshRates(){
   const b=document.getElementById('refreshBtn');b.textContent='⟳ Laden...';b.disabled=true;
-  try{const r=await fetch('https://api.frankfurter.app/latest?from=USD&to=EUR');if(r.ok){const d=await r.json();D.accounts.dollarRate=d.rates.EUR;save();updateAll();}}catch(e){}
+  try{
+    const symbols=D.stocks.map(s=>s.symbol).join(',');
+    const r=await fetch('/api/rates?symbols='+encodeURIComponent(symbols));
+    if(r.ok){
+      const d=await r.json();
+      if(d.dollarRate){D.accounts.dollarRate=d.dollarRate;}
+      if(d.goldPriceEUR){D.accounts.goldPricePerOunce=d.goldPriceEUR;}
+      if(d.stocks){
+        D.stocks.forEach(s=>{
+          if(d.stocks[s.symbol]!==undefined){s.currentPrice=d.stocks[s.symbol];}
+        });
+      }
+      save();updateAll();renderStocks();
+      const u=d.updated||0,f=d.failed||0;
+      console.log(`Rates aktualisiert: ${u} OK, ${f} Fehler`,d.errors||[]);
+    }
+  }catch(e){console.error('refreshRates Fehler:',e);}
   b.textContent='⟳ Aktualisieren';b.disabled=false;
 }
 
