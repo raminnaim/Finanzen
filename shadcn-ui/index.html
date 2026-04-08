@@ -539,10 +539,51 @@ document.getElementById('navTabs').addEventListener('click',e=>{
   if(tid==='charts')renderAnalysisCharts();
 });
 
-// ============ RATES ============
+// ============ RATES & LIVE PRICES ============
+async function fetchYahoo(symbol){
+  const url=`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=1d&interval=1d`;
+  // Versuch 1: Direkt
+  try{
+    const r=await fetch(url);
+    if(r.ok){const d=await r.json();return d.chart.result[0].meta.regularMarketPrice||null;}
+  }catch(e){}
+  // Versuch 2: CORS-Proxy
+  try{
+    const r=await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`);
+    if(r.ok){const d=await r.json();return d.chart.result[0].meta.regularMarketPrice||null;}
+  }catch(e){}
+  return null;
+}
+
 async function refreshRates(){
   const b=document.getElementById('refreshBtn');b.textContent='⟳ Laden...';b.disabled=true;
-  try{const r=await fetch('https://api.frankfurter.app/latest?from=USD&to=EUR');if(r.ok){const d=await r.json();D.accounts.dollarRate=d.rates.EUR;save();updateAll();}}catch(e){}
+  const status=document.getElementById('ratesInfo');
+  let updated=0, failed=0;
+
+  // 1) USD/EUR Wechselkurs
+  try{const r=await fetch('https://api.frankfurter.app/latest?from=USD&to=EUR');if(r.ok){const d=await r.json();D.accounts.dollarRate=d.rates.EUR;updated++;}}catch(e){failed++;}
+
+  // 2) Goldpreis (Yahoo: GC=F = Gold Futures in USD)
+  try{
+    const gp=await fetchYahoo('GC=F');
+    if(gp){D.accounts.goldPricePerOunce=Math.round(gp*D.accounts.dollarRate);updated++;}
+  }catch(e){failed++;}
+
+  // 3) Aktienkurse (DE-Aktien in EUR, US-Aktien in USD → umrechnen)
+  for(const s of D.stocks){
+    try{
+      const p=await fetchYahoo(s.symbol);
+      if(p!==null){
+        const isEUR=s.symbol.endsWith('.DE')||s.symbol.endsWith('.F');
+        s.currentPrice=Math.round((isEUR?p:p*D.accounts.dollarRate)*100)/100;
+        updated++;
+      }else{failed++;}
+    }catch(e){failed++;}
+  }
+
+  save();updateAll();renderStocks();
+  const ts=new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
+  status.textContent=`USD/EUR: ${fmtN(D.accounts.dollarRate,4)} | Gold: ${fmt(D.accounts.goldPricePerOunce)}/oz | Aktualisiert: ${ts} (${updated} OK${failed?' / '+failed+' fehlgeschlagen':''})`;
   b.textContent='⟳ Aktualisieren';b.disabled=false;
 }
 
